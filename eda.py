@@ -11,9 +11,11 @@ Original file is located at
 
 import pandas as pd
 import numpy as np
-# To plot a map
+import matplotlib.pyplot as plt
+import plotly.graph_objects as go
 import geopandas as gpd
 from shapely.geometry import Point, Polygon
+import math
 
 """# Carga de Datos"""
 
@@ -83,8 +85,6 @@ df_yearly_delta = df_races_and_laps.groupby(["year"], as_index = False)['delta']
 
 # Commented out IPython magic to ensure Python compatibility.
 # %matplotlib inline
-import matplotlib.pyplot as plt
-import math
 
 fig = plt.figure(figsize=(10, 8), dpi=80)
 ax = plt.axes()
@@ -96,10 +96,12 @@ ax.plot(df_yearly_delta['year'].astype(int), df_yearly_delta['delta']);
 
 df_yearly_delta
 
-"""2. Circuitos 
+"""2. Circuitos
 
+Map 1 --> geopandas
 """
 
+# Upload files needed for geopandas map
 from google.colab import files
 uploaded = files.upload()
 map = gpd.read_file("World_Countries.shp")
@@ -116,3 +118,47 @@ map.plot(ax=ax, alpha=0.4, color = "grey")
 geo_circuitos[geo_circuitos['country'] == 'Spain'].plot(ax = ax, markersize = 20, color = "red", marker = "o", label= "Spain")
 geo_circuitos[geo_circuitos['country'] != 'Spain'].plot(ax = ax, markersize = 20, color = "blue", marker = "o", label= "Else")
 plt.legend(prop={'size':'15'})
+
+"""Map 2 --> plotly.graph_objects"""
+
+# La información de los circuitos viene reflejada en el archivo 'circuits.csv'
+# 1) Extraemos la lista de circuitos en los que se ha competido cada año
+# 2) Calculamos el número de veces que se ha competido en cada circuito
+# 3) Extraemos el año de la última carrera realizada en cada circuito
+# 4) Extraemos la localización geográfica de cada circuito
+# 5) Representamos los resultados en un Bubble Map. (El tamaño de la burbuja representa el volumen de apariciones en el circuito)
+
+# Extraemos la lista de circuitos en los que se ha corrido cada año
+df_circuitos_anuales = historico_carreras[['year', 'circuitId']]
+
+# Calculamos el número de veces que se ha competido en cada circuito
+df_carrerasPorCircuito = df_circuitos_anuales.groupby(['circuitId'], as_index = False).count().rename(columns = {'year': 'n_carreras'})
+
+# Extraemos el año de la última carrera realizada en cada circuito
+df_carrerasPorCircuito['last_year'] = df_circuitos_anuales.groupby(['circuitId'], as_index = False)['year'].max()['year']
+
+# Extraemos la localización geográfica de cada circuito (latitud, longitud)
+df_carrerasPorCircuito = circuitos[['circuitId', 'name', 'lat', 'lng']].merge(df_carrerasPorCircuito, how= 'left', on='circuitId')
+
+# Representamos los resultados con un Bubble Map the Plotly
+fig = go.Figure()
+    
+fig.add_trace(go.Scattermapbox(
+        lon = df_carrerasPorCircuito['lng'],
+        lat = df_carrerasPorCircuito['lat'],
+        text = df_carrerasPorCircuito['name'] + '<br>Nº Carreras: ' + (df_carrerasPorCircuito['n_carreras']).astype(str) + '<br>Última Carrera: ' + (df_carrerasPorCircuito['last_year']).astype(str),
+        marker = dict(
+            size = df_carrerasPorCircuito['n_carreras'],
+            #color = df_carrerasPorCircuito['n_carreras']
+        )
+    ))
+
+
+fig.update_layout(
+    title = 'Nº Carreras por Circuito [Histórico]',
+    showlegend = False,
+    mapbox_style='carto-positron',
+    margin={"r":0,"t":0,"l":0,"b":0},
+    )
+
+fig.show()
