@@ -12,8 +12,10 @@ Original file is located at
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+import plotly.express as px
 import plotly.graph_objects as go
-import geopandas as gpd
+import seaborn as sns
+# import geopandas as gpd
 from shapely.geometry import Point, Polygon
 import math
 
@@ -30,7 +32,7 @@ constructores = pd.read_csv("https://raw.githubusercontent.com/tomipegu/f1_visua
 # Standings Conductores
 standing_conductores = pd.read_csv("https://raw.githubusercontent.com/tomipegu/f1_visualizations/Datasets/driver_standings.csv")
 # Conductores
-coductores = pd.read_csv("https://raw.githubusercontent.com/tomipegu/f1_visualizations/Datasets/drivers.csv")
+conductores = pd.read_csv("https://raw.githubusercontent.com/tomipegu/f1_visualizations/Datasets/drivers.csv")
 # Tiempos de Vuelta
 tiempos_vuelta = pd.read_csv("https://raw.githubusercontent.com/tomipegu/f1_visualizations/Datasets/lap_times.csv")
 # Pit-Stops
@@ -160,5 +162,54 @@ fig.update_layout(
     mapbox_style='carto-positron',
     margin={"r":0,"t":0,"l":0,"b":0},
     )
+
+fig.show()
+
+"""3. Nacionalidades constructores"""
+
+# Let's see where are the teams from
+f = lambda x: pc.country_name_to_country_alpha2(x, cn_name_format="default")
+constructores['new'] = df['nationality'].apply(f)
+
+data = [
+    go.Pie(
+        labels=constructores["nationality"], 
+        textinfo='label+percent',
+        insidetextorientation='radial', 
+        marker_colors = ["lightblue", "mediumseagreen", "gold", "darkorange", "indigo"],
+        pull = [0,0,0.1,0,0],
+        rotation = 0,
+        sort = False
+    )
+]
+
+layout = go.Layout(title = "Nacionalidad de los constructores")
+
+fig = go.Figure(data = data, layout = layout)
+
+fig.show()
+
+"""4. Número de carreras por año"""
+
+# Let's study the number of races by year
+sns.set_theme(style='whitegrid')
+fig, axis = plt.subplots(1,1, figsize=(20, 5), sharex=True)
+
+df_races_plot = historico_carreras['year'].value_counts().reset_index()
+df_races_plot.columns = ['Year', 'Races']
+df_races_plot.rename(columns={'Year' : 'Races'})
+df_races_plot.sort_values(by=['Year'], inplace=True)
+df_races_plot.sort_values(by=['Year'])
+
+graph = sns.barplot(x=df_races_plot['Year'], y=df_races_plot['Races'], palette="crest")
+graph.set(title='Número de carreras por año', xlabel='Año', ylabel='Nº carreras')
+graph.set_xticklabels(labels=graph.get_xticklabels(), rotation=90)
+
+max = df_races_plot.describe() * 1.1
+max_y = 0
+
+_, max_y_f = graph.get_ylim()
+max_y = max_y_f if max_y_f > max_y else max_y
+graph.set(ylim=(0, max_y))
 
 fig.show()
